@@ -1,0 +1,24 @@
+{
+  "name": "nodeGSM",
+  "version": "0.0.1",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+	"serialport":"https://github.com/voodootikigod/node-serialport/tarball/master"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zekenie/nodeGSM.git"
+  },
+  "author": "Zeke Nierenberg",
+  "license": "BSD",
+  "gitHead": "6ebccfc36c62710cf2c836d6d17bffda6e475fe4",
+  "bugs": {
+    "url": "https://github.com/zekenie/nodeGSM/issues"
+  }
+}

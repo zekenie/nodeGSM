@@ -18,21 +18,11 @@ function gsm(msg,ignoreAt) {
 }
 
 serialPort.on('open',function(err) {
-	if(err) {
-		console.log("there was an open error",err);
-		return;
-	}
-	console.log("open");
-	try{
-	if(err) console.log(err);
-	//gsm('CPIN="' + pin + '"');
-	//gsm('CMGF=1');
-	//gsm('CMGS="+15102955523"');
-	gsm('this is a test \u001A',true);
-	}catch(e){console.log(e);}
-
+	gsm('CPIN="' + pin + '"');
+	gsm("CMGF=1");
+	gsm('CPMS="SM"');
+	gsm('CMGL="REC UNREAD"');
 });
-
 
 serialPort.on('data',function(data) {
 	console.log("data recieved",data);
