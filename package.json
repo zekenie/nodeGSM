@@ -4,11 +4,13 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
-	"serialport":"https://github.com/voodootikigod/node-serialport/tarball/master"
+	"serialport":"https://github.com/voodootikigod/node-serialport/tarball/master",
+	"express":"3.x"	,
+	"underscore":"*",
+	"moment":"*"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "repository": {

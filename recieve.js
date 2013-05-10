@@ -20,7 +20,7 @@ function gsm(msg,ignoreAt) {
 serialPort.on('open',function(err) {
 	gsm('CPIN="' + pin + '"');
 	gsm("CMGF=1");
-	gsm('CPMS="SM"');
+	//gsm('CPMS="SM"');
 	gsm('CMGL="REC UNREAD"');
 });
 
