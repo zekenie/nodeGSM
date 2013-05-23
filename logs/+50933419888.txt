@@ -1,0 +1,1 @@
+,{"type":"out","message":"test","date":"2013-05-22T14:08:04.717Z"},{"type":"in","message":"+CMTI: ME,6","date":"2013-05-22T10:08:06.000Z"}

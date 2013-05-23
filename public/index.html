@@ -6,7 +6,7 @@
 
 <script>
 	$("#send").click(function(){
-		$.post("http://localhost:8080/send",{number:$("#num").val(),message:$("#txt").val()},function(){
+		$.post("http://127.0.0.1:8000/send",{number:$("#num").val(),message:$("#txt").val()},function(){
 			$("input").val("");
 		});
 	});

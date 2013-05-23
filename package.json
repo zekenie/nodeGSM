@@ -7,6 +7,12 @@
 	"serialport":"https://github.com/voodootikigod/node-serialport/tarball/master",
 	"express":"3.x"	,
 	"underscore":"*",
+	"mongodb":"*",
+	"mongoose":"*",
+	"mongoose-findorcreate":"*",
+	"async":"*",
+	"mysql":"*",
+	"sequelize":"*",
 	"moment":"*",
 	"request":"*"
   },

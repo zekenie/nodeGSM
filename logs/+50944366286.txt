@@ -1,0 +1,1 @@
+,{"type":"out","message":"testing","date":"2013-05-21T19:55:17.302Z"},{"type":"in","message":"OK","date":"2013-05-21T15:55:46.000Z"},{"type":"out","message":"its zeke, could you text back... its a system test.","date":"2013-05-22T14:03:41.662Z"},{"type":"out","message":"My phone is out of texts","date":"2013-05-22T14:03:52.298Z"}
