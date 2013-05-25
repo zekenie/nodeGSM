@@ -12,6 +12,7 @@
 	"mongoose-findorcreate":"*",
 	"async":"*",
 	"mysql":"*",
+	"forever-monitor":"*",
 	"sequelize":"*",
 	"moment":"*",
 	"request":"*"

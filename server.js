@@ -3,33 +3,95 @@ var SerialPort = require("serialport").SerialPort,
 	express = require("express"),
 	app = express(),
 	fs = require("fs"),
+	//forever = require("forever-monitor"),
 	_ = require("underscore"),
 	serialPort = new SerialPort("/dev/ttyUSB1", {/*parser:require("serialport").parsers.readline("\n")*/}),
-	pin = 1111,
+	pin = 0000,
 	mysql = require("./lib/mysql"),
 	mongo = require("./lib/mongo"),
 	postUrl = "http://127.0.0.1,"
-	recieved = [];
+	recieved = [],
+	outgoing = [];
 
 app.use(express.static(__dirname + '/public'));
 app.use(express.bodyParser());
 
+//var webapp = new (forever.Monitor)("/home/user/trext/server.js",{max:10});
+//webapp.start();	
+
+
+//TO BE REMOVED AFTER TESTING PERIOD
 app.post("/send",function(req,res){
 	console.log("request recieved");
 	sendMessage(req.body.number,req.body.message);
-	res.send("message sent");		
-	
+	res.send("message sent");
+});
+
+app.get("/contactGroup",function(req,res) {
+	res.set("Access-Control-Allow-Origin","*");
+	mongo.ContactGroup.findById(req.query.id).populate("contacts").exec(function(err,contactGroup) {
+		if(err) {
+			console.log("error finding contact group",err);
+			res.send(500);
+			return;
+		}
+		console.log(contactGroup,"CONTACTGROUP"	);
+		mysql.Tree.find(contactGroup.treeId).error(console.log).success(function(tree) {
+			mysql.Node.find({where:{treeId:tree.id,startingPoint:1}}).error(console.log).success(function(node){
+				res.send(200);
+				console.log("CONTACTS",contactGroup.contacts);
+				contactGroup.contacts.forEach(function(contact){
+					console.log("finding contact");
+					mongo.Conversation.findOne({from:contact.phone},function(err,conversation){
+						if(conversation){
+							console.log("found old conv",conversation);
+							conversation.remove(function(err){
+								if(err){console.log("cant't remove old conv");}
+								else{console.log("old conversation deleted");}
+							});
+						}
+							mongo.Conversation.create({
+								treeId:tree.id,
+								from:contact.phone,
+								contactGroupId:contactGroup._id,
+								contactId:contact.id,
+								currentNodeId:node.id,
+								conversation:[{nodeId:node.id,response:"",name:node.name}]
+							},function(err,conversation) {
+								if(err) {
+									console.log("error saving contact",err);
+									return;
+								}
+								sendMessage(contact.phone,node.text);
+							});
+							
+					})
+					
+				});
+			});
+		});
+	});
 });
 
 function sendMessage(number,message){
-	gsm('CMGS="' + number + '"');
-	gsm(message + '\u001A',true);
-	fs.appendFile("./logs/+" + number + ".txt", "," + JSON.stringify({type:"out",message:message,date:new Date()}),function(err){
-		if(err){
-			console.log("error writing log file",err);
-			return false;
-		}
-	});
+	outgoing.push({number:number,message:message})
+}
+
+function gsmSend() {
+	if(outgoing.length > 0){
+		toSend = outgoing.pop();
+		console.log("*****************Sending to",toSend.number,"mesage:",toSend.message,new Date(),"****************");
+		gsm('CMGS="' + toSend.number + '"');
+		gsm(toSend.message + '\u001A',true);
+		fs.appendFile("./logs/+" + toSend.number + ".txt", "," + JSON.stringify({type:"out",message:toSend.message,date:new Date()}),function(err){
+			if(err){
+				console.log("error writing log file",err);
+				return false;
+			}
+		});
+	}
+	
+	setTimeout(gsmSend,2690);
 }
 
 function gsm(msg,ignoreAt) {
@@ -58,7 +120,7 @@ function checkForUnread(){
 	console.log("---CHECK FOR UNREAD");
 	gsm('CMGL="REC UNREAD"');
 	//gsm('CMGL="ALL"');
-	//gsm('CMGD=0,1'); //this is for deleting messages when the inbox is full!!!
+	gsm('CMGD=0,1'); //this is for deleting messages when the inbox is full!!!
 }
 
 serialPort.on('open',function(err) {
@@ -70,34 +132,14 @@ serialPort.on('open',function(err) {
 	setup(function(){
 		app.listen(8000,'127.0.0.1',function(){
 			console.log("webserver running");
-			setInterval(checkForUnread,6000);
+			gsmSend();
+			//setInterval(checkForUnread,6000);
 		});
 	});	
 });
 
 var expect = false;
 
-/*serialPort.on('data',function(data) {
-	data = data.toString(); 	
-	if(data)
-		console.log("USB-->",data);
-	data = data.replace(/"/g,'');
-	if(expect === true) {
-		recieved[recieved.length-1].message = data.trim();
-		var message= recieved[recieved.length-1];
-		
-		
-		route({from:message.from,body:message.message});
-		
-		fs.appendFile("./logs/" + message.from + ".txt","," + JSON.stringify({type:"in",message:data.trim(),date:message.date}));
-		expect = false;
-	}
-	if(data.indexOf("REC UNREAD") !== -1) {
-		var parts = data.split(",");
-		recieved.push({date:moment(parts[4] + parts[5].trim().slice(0,-3),"YY/MM/DD,HH:mm:ss"),from:parts[2].trim()});
-		expect = true;
-	}
-});*/
 
 
 
@@ -120,6 +162,12 @@ serialPort.on('data',function(data) {
 			fs.appendFile("./logs/" + message.from + ".txt","," + JSON.stringify({type:"in",message:data.trim(),date:message.date}));
 			recieved.push(message);
 		}
+		if(line.indexOf('+CMTI: "ME"') !== -1) {
+			checkForUnread();
+		}
+	//	if(line.indexOf('+CMGS') !== -1) {
+	//		gsmSend();
+	//	}
 	});
 });
 
@@ -135,22 +183,24 @@ serialPort.on('data',function(data) {
 function route(text) {
 	
 	//check if there is already a conversation with that number open
-	mongo.Conversation.findOne({from:text.from},function(err,conversation) {
-		if(err) {
-			console.log("there was an error finding conversations",err);
-			return;
-		}
-		console.log("the conversation is",conversation);
-		if(conversation) {/* there is a conversation open */
-			if(text.body === "!"){
-				sendMessage(text.from,"Se fini");
-				finish(conversation);
-			}else
-				continueConversation(text,conversation);
-		} else {
-			startConversation(text);
-		}
-	});
+	if(text.from.length > 6) {
+		mongo.Conversation.findOne({from:text.from},function(err,conversation) {
+			if(err) {
+				console.log("there was an error finding conversations",err);
+				return;
+			}
+			console.log("the conversation is",conversation);
+			if(conversation) {/* there is a conversation open */
+				if(text.body === "!"){
+					sendMessage(text.from,"Se fini");
+					finish(conversation);
+				}else
+					continueConversation(text,conversation);
+			} else {
+				startConversation(text);
+			}
+		});
+	}
 	gsm('CMGD=0,1');
 }
 function continueConversation(text,conversation) {
@@ -159,7 +209,7 @@ function continueConversation(text,conversation) {
 			var body = text.body.trim().toLowerCase();
 			var test =	(connection.comparator === '='			&& connection['case'] === text.body.toLowerCase())
 					||	(connection.comparator === 'contains'	&& text.body.toLowerCase().indexOf(connection['case'].toLowerCase()) !== -1)
-					||	(connection.comparator === ">"			&& parseInt(tex.body) > connection['case'])
+					||	(connection.comparator === ">"			&& parseInt(text.body) > connection['case'])
 					||	(connection.comparator === "<"			&& parseInt(text.body) < connection['case'])
 					||	 connection.comparator === "any case";
 			return test;
@@ -189,10 +239,9 @@ function continueConversation(text,conversation) {
 				mysql.Node.find(nextNodeID).error(console.log).success(function(node) {
 					sendMessage(text.from,node.text);	
 				});
-				if(node.numConnections === 0) {
-					finish(conversation);
-				}
+				
 				conversation.conversation[conversation.conversation.length-1].response = text.body;
+				conversation.conversation.push({nodeId:nextNodeID,name:node.name,response:''});
 				conversation.currentNodeId = nextNodeID;
 				conversation.save(function(err,conversation) {
 					if(err) {
@@ -200,6 +249,9 @@ function continueConversation(text,conversation) {
 						return;
 					}
 					console.log("the conversation was saved",conversation);
+					if(node.numConnections === 0) {
+						finish(conversation);
+					}
 				});
 			});
 			
